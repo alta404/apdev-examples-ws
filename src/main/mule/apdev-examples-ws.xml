@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd">
+	<vm:config name="VM_Config" doc:name="VM Config" doc:id="c590e788-5ade-4687-b883-28f306a4013f" >
+		<vm:connection />
+		<vm:queues >
+			<vm:queue queueName="goodbyeQ" />
+		</vm:queues>
+	</vm:config>
+	<flow name="goodbyeFlow" doc:id="e534f2a3-cc00-4b44-a693-dfc431c11ea7" >
+		<vm:listener queueName="goodbyeQ" doc:name="goodbyeQ" doc:id="567dab01-265f-4079-90c8-7b3ff002a0d6" config-ref="VM_Config"/>
+		<set-payload value='#["Goodbye Cruel World!"]' doc:name="Goodbye" doc:id="5bfafecf-da31-4e23-af2f-34d085017d96" />
+		<logger level="INFO" doc:name="Goodbye" doc:id="fd1cb36e-bece-4b48-81bd-6a904a7b3113" message='#[output application/json&#10;---&#10;{&#10;	reporter: "Goodbye Logger",&#10;	thePayload: payload,&#10;	theSuppliedName: attributes.queryParams.name,&#10;	thePreservedName: vars.firstname&#10;}]'/>
+	</flow>
+	<sub-flow name="callGoodbye" doc:id="0641aed8-f099-4c5e-bed7-a12c2d948efb">
+		<vm:publish queueName="goodbyeQ" doc:name="goodbyeQ" doc:id="905c4f65-5359-4f46-9472-498e859b17bf" config-ref="VM_Config"/>
+	</sub-flow>
+	<flow name="helloFlow" doc:id="e3bcdf22-c265-4eb8-88fb-f07063ce0f3e" >
+		<http:listener doc:name="GET /hello" doc:id="b2320f16-2680-48d8-9c14-2f915d9d1996" path="/hello" config-ref="HTTP_Listener_config"/>
+		<set-variable value='#[attributes.queryParams.name default "unassigned"]' doc:name="firstname" doc:id="9e029cc0-1dd9-4131-99a1-f5133c25fc89" variableName="firstname"/>
+		<set-payload value='#["Hello " ++ vars.firstname]' doc:name="Hello" doc:id="ae9d4938-81d2-4ab0-9585-892ae8aef026" />
+		<logger level="INFO" doc:name="Audit" doc:id="31cf1e6a-acd6-4f1d-b49f-c1aa62f8bfe6" message='#[output application/json&#10;---&#10;{&#10;	reporter: "Audit Logger",&#10;	thePayload: payload,&#10;	theSuppliedName: (attributes.queryParams.name default "unassigned"),&#10;	thePreservedName: vars.firstname&#10;}]'/>
+		<flow-ref doc:name="callGodbye" doc:id="80d0942b-5c65-4563-8642-a06e5e54c914" name="callGoodbye" />
+		<logger level="INFO" doc:name="Hello" doc:id="1e8cb9f7-34be-4147-b35e-4210fd0e29cb" message='#[output application/json&#10;var logMessage = {&#10;	reporter: "Hello Logger",&#10;	thePayload: payload,&#10;	theSuppliedName: attributes.queryParams.name,&#10;	thePreservedName: vars.firstname&#10;}&#10;---&#10;dw::Runtime::wait(logMessage, 200)]'/>
+	</flow>
+</mule>
