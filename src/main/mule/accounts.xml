@@ -1,32 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:file="http://www.mulesoft.org/schema/mule/file"
-	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
-	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
 http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
 http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
-http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
 	<flow name="dbAccountsFlow" doc:id="557c1648-8cd2-4773-9064-5c82506b413c" >
 		<scheduler doc:name="3 seconds" doc:id="5d6dcb1e-5346-4b69-8ee0-1e2a18239da7" >
 			<scheduling-strategy >
 				<fixed-frequency frequency="3000"/>
 			</scheduling-strategy>
 		</scheduler>
+		<os:retrieve doc:name="highestRecord" doc:id="94c14e3a-cce8-481a-8d85-e4937ec36385" key="highestRecord" target="maxID">
+			<os:default-value ><![CDATA[0]]></os:default-value>
+		</os:retrieve>
 		<db:select doc:name="Select" doc:id="d09ebdd9-6ac0-40ee-a0d9-e477a36abfe3" config-ref="Database_Config">
 			<db:sql ><![CDATA[SELECT * from accounts
-WHERE postal = "12345y"]]></db:sql>
+WHERE postal = "12345y"
+AND accountID > :MID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{MID:vars.maxID}]]]></db:input-parameters>
 		</db:select>
-		<ee:transform doc:name="Transform Message" doc:id="52178ac2-b5c0-4d3f-86df-84088c9b403d" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
+		<choice doc:name="Choice" doc:id="7e5740c5-7ddc-4e24-b45e-c68169c6a660" >
+			<when expression="#[sizeOf(payload as Array) &gt; 0]">
+				<os:store doc:name="highestRecord" doc:id="cb0f607a-9164-4e26-a298-7d7bf18a793f" key="highestRecord">
+			<os:value><![CDATA[#[max(payload.accountID)]]]></os:value>
+		</os:store>
+				<ee:transform doc:name="Transform Message" doc:id="52178ac2-b5c0-4d3f-86df-84088c9b403d">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 payload]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-		<logger level="INFO" doc:name="payload" doc:id="85c7ed90-12c5-4b19-94d0-dbbc7f25e4ad" message="#[payload]"/>
+				<logger level="INFO" doc:name="payload" doc:id="85c7ed90-12c5-4b19-94d0-dbbc7f25e4ad" message="#[payload]" />
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="ba6637c7-16ad-4e95-8f78-ef21d16f11a9" message='#[output text --- "\n\nNo new records. Move along..."]'/>
+			</otherwise>
+		</choice>
 	</flow>
 	<flow name="getCSVAccounts" doc:id="59f9bc66-f89b-4915-b38c-20e6c4d69f43" >
 		<file:listener doc:name="On New or Updated File" doc:id="20f3491a-57d2-4a62-a21e-59f76bc3d39e" config-ref="File_Config" directory="arrivals" moveToDirectory="processed" renameTo='#[attributes.fileName ++ ".backup"]'>

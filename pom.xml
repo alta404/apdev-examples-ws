@@ -83,6 +83,12 @@
 			<artifactId>mysql-connector-java-8.0.16</artifactId>
 			<version>0.1</version>
 		</dependency>
+		<dependency>
+			<groupId>org.mule.connectors</groupId>
+			<artifactId>mule-objectstore-connector</artifactId>
+			<version>1.2.2</version>
+			<classifier>mule-plugin</classifier>
+		</dependency>
 	</dependencies>
 
 	<repositories>
