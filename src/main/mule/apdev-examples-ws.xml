@@ -20,7 +20,7 @@ http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/cu
 		<vm:publish queueName="goodbyeQ" doc:name="goodbyeQ" doc:id="905c4f65-5359-4f46-9472-498e859b17bf" config-ref="VM_Config"/>
 	</sub-flow>
 	<flow name="helloFlow" doc:id="e3bcdf22-c265-4eb8-88fb-f07063ce0f3e" >
-		<http:listener doc:name="GET /hello" doc:id="b2320f16-2680-48d8-9c14-2f915d9d1996" path="/hello" config-ref="HTTP_Listener_config"/>
+		<http:listener doc:name="GET /hello" doc:id="b2320f16-2680-48d8-9c14-2f915d9d1996" path="/hello" config-ref="Application_Listener_config"/>
 		<set-variable value='#[attributes.queryParams.name default "unassigned"]' doc:name="firstname" doc:id="9e029cc0-1dd9-4131-99a1-f5133c25fc89" variableName="firstname"/>
 		<set-payload value='#["Hello " ++ vars.firstname]' doc:name="Hello" doc:id="ae9d4938-81d2-4ab0-9585-892ae8aef026" />
 		<logger level="INFO" doc:name="Audit" doc:id="31cf1e6a-acd6-4f1d-b49f-c1aa62f8bfe6" message='#[output application/json&#10;---&#10;{&#10;	reporter: "Audit Logger",&#10;	thePayload: payload,&#10;	theSuppliedName: (attributes.queryParams.name default "unassigned"),&#10;	thePreservedName: vars.firstname&#10;}]'/>

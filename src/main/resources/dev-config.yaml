@@ -1,2 +1,12 @@
 http:
   port: "8081"
+  
+salesforce:
+  username: ${SF_USERNAME}
+  password: ${SF_PASSWORD}
+  security-token: ${SF_SECURITY_TOKEN}
+  
+file:
+  config:
+    connection: 
+      working-dir: ${WORKING_DIR}  

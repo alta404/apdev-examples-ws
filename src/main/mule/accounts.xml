@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	<flow name="getCSVAccounts" doc:id="59f9bc66-f89b-4915-b38c-20e6c4d69f43" >
+		<file:listener doc:name="On New or Updated File" doc:id="20f3491a-57d2-4a62-a21e-59f76bc3d39e" config-ref="File_Config" directory="arrivals" moveToDirectory="processed" renameTo='#[attributes.fileName ++ ".backup"]'>
+			<scheduling-strategy >
+				<fixed-frequency frequency="3000"/>
+			</scheduling-strategy>
+			<file:matcher filenamePattern="*.csv" />
+		</file:listener>
+		<logger level="INFO" doc:name="Logger" doc:id="f3784d97-4751-40b1-8d85-d196bd8d7b87" message="#[output json --- payload]"/>
+	</flow>
+	<flow name="SFDCAccountsFlow" doc:id="311c11aa-6909-4cd5-b852-4e372938cd42" >
+		<http:listener doc:name="GET /sfdc" doc:id="85951e42-54f6-44d1-b48f-848ac7ea8dc7" config-ref="Application_Listener_config" path="/sfdc"/>
+		<salesforce:query doc:name="Query" doc:id="4b4a37a6-3e40-4862-b482-114b7b88114e" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query ><![CDATA[SELECT Name, LastModifiedDate, BillingPostalCode
+FROM Account]]></salesforce:salesforce-query>
+		</salesforce:query>
+		<ee:transform doc:name="Transform Message" doc:id="ae1ba0e5-da26-4632-b0f8-017cfb590ab5" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="payload" doc:id="d39337f9-717d-497c-96f3-b0dc8701876c" message="#[payload]"/>
+	</flow>
+</mule>
