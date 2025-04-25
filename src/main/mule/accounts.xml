@@ -1,14 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:db="http://www.mulesoft.org/schema/mule/db"
-	xmlns:file="http://www.mulesoft.org/schema/mule/file"
-	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+<mule xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
 http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
 http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
 http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
-http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd">
+	<flow name="syncToSalesForce" doc:id="d1652bfc-b906-4dad-9e9e-ef94f9b9792b" >
+		<vm:listener doc:name="accountsQ" doc:id="5511cf7d-53ae-4618-ae15-894ba748c5d8" config-ref="VM_Config" queueName="accountsQ"/>
+		<logger level="INFO" doc:name="payload" doc:id="85c7ed90-12c5-4b19-94d0-dbbc7f25e4ad" message="#[payload]" />
+	</flow>
 	<flow name="dbAccountsFlow" doc:id="557c1648-8cd2-4773-9064-5c82506b413c" >
 		<scheduler doc:name="3 seconds" doc:id="5d6dcb1e-5346-4b69-8ee0-1e2a18239da7" >
 			<scheduling-strategy >
@@ -37,7 +42,7 @@ output application/json
 payload]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-				<logger level="INFO" doc:name="payload" doc:id="85c7ed90-12c5-4b19-94d0-dbbc7f25e4ad" message="#[payload]" />
+				<vm:publish queueName="accountsQ" doc:name="accountsQ" doc:id="5ea99807-ffec-44e4-b668-571be218cd08" config-ref="VM_Config"/>
 			</when>
 			<otherwise >
 				<logger level="INFO" doc:name="Logger" doc:id="ba6637c7-16ad-4e95-8f78-ef21d16f11a9" message='#[output text --- "\n\nNo new records. Move along..."]'/>
@@ -57,7 +62,8 @@ payload]]></ee:set-payload>
 		<http:listener doc:name="GET /sfdc" doc:id="85951e42-54f6-44d1-b48f-848ac7ea8dc7" config-ref="Application_Listener_config" path="/sfdc"/>
 		<salesforce:query doc:name="Query" doc:id="4b4a37a6-3e40-4862-b482-114b7b88114e" config-ref="Salesforce_Config">
 			<salesforce:salesforce-query ><![CDATA[SELECT Name, LastModifiedDate, BillingPostalCode
-FROM Account]]></salesforce:salesforce-query>
+FROM Account
+]]></salesforce:salesforce-query>
 		</salesforce:query>
 		<ee:transform doc:name="Transform Message" doc:id="ae1ba0e5-da26-4632-b0f8-017cfb590ab5" >
 			<ee:message >

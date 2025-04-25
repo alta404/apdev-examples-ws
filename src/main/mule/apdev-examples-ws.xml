@@ -9,6 +9,7 @@ http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/cu
 		<vm:connection />
 		<vm:queues >
 			<vm:queue queueName="goodbyeQ" />
+			<vm:queue queueName="accountsQ" />
 		</vm:queues>
 	</vm:config>
 	<flow name="goodbyeFlow" doc:id="e534f2a3-cc00-4b44-a693-dfc431c11ea7" >
