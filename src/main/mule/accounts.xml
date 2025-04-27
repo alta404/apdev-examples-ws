@@ -1,18 +1,52 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns:os="http://www.mulesoft.org/schema/mule/os"
-	xmlns:db="http://www.mulesoft.org/schema/mule/db"
-	xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+<mule xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+	xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
 http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
 http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
 http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
 http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
-http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd">
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd">
 	<flow name="syncToSalesForce" doc:id="d1652bfc-b906-4dad-9e9e-ef94f9b9792b" >
 		<vm:listener doc:name="accountsQ" doc:id="5511cf7d-53ae-4618-ae15-894ba748c5d8" config-ref="VM_Config" queueName="accountsQ"/>
 		<logger level="INFO" doc:name="payload" doc:id="85c7ed90-12c5-4b19-94d0-dbbc7f25e4ad" message="#[payload]" />
+		<ee:transform doc:name="Transform Message" doc:id="9050ab39-f913-48e8-b4aa-8049489770d6" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	Name: payload01.name,
+	BillingCity: payload01.city,
+	BillingPostalCode: payload01.postal
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<batch:job jobName="salesforceBarch_Job" doc:id="ec078a35-fde1-4606-abdc-beceb7ce09e4" >
+			<batch:process-records >
+				<batch:step name="CheckRecord_Step" doc:id="322722d2-5830-45ab-89b2-47ae150a4cf8" >
+					<logger level="INFO" doc:name="CheckRecord" doc:id="0e1be319-9831-4b9f-bec3-dd1a76d61944" message='#[output json &#10;--- &#10;{&#10;	reporter: "Check Record Logger",&#10;	message: "Checking Record in Salesforce"&#10;}]'/>
+					<salesforce:query doc:name="Query" doc:id="0535ecf1-1088-4507-8fc2-55dfbc5d75fa" config-ref="Salesforce_Config" target="freshRecord" targetValue="#[sizeOf(payload as Array) &lt; 1]">
+						<salesforce:salesforce-query ><![CDATA[SELECT Name from Account 
+Where Name = ':NM']]></salesforce:salesforce-query>
+						<salesforce:parameters ><![CDATA[#[{NM: payload.Name}]]]></salesforce:parameters>
+					</salesforce:query>
+				</batch:step>
+				<batch:step name="InsertRecord_Step" doc:id="d9549722-51bc-4376-91b9-b1cdc47c8204" acceptExpression="#[vars.freshRecord]">
+					<logger level="INFO" doc:name="InsertRecord" doc:id="0b79fc50-c8d5-4f63-81e5-7c48ddf40b57" message='#[output json &#10;--- &#10;{&#10;	reporter: "Insert Record Logger",&#10;	message: "Inserting Record in Salesforce"&#10;}]'/>
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="f931f451-86d9-4f47-9b47-4688d26ed077" size="10">
+						<salesforce:create type="Account" doc:name="Create" doc:id="03a9404e-e1e9-4803-92bf-a1adf98d2b75" config-ref="Salesforce_Config"/>
+					</batch:aggregator>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<logger level="INFO" doc:name="Logger" doc:id="e2f261a9-f1dd-4528-9562-8a1080b98443" message="#[output json --- payload]"/>
+			</batch:on-complete>
+		</batch:job>
 	</flow>
 	<flow name="dbAccountsFlow" doc:id="557c1648-8cd2-4773-9064-5c82506b413c" >
 		<scheduler doc:name="3 seconds" doc:id="5d6dcb1e-5346-4b69-8ee0-1e2a18239da7" >
@@ -25,7 +59,7 @@ http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/cu
 		</os:retrieve>
 		<db:select doc:name="Select" doc:id="d09ebdd9-6ac0-40ee-a0d9-e477a36abfe3" config-ref="Database_Config">
 			<db:sql ><![CDATA[SELECT * from accounts
-WHERE postal = "12345y"
+WHERE postal = "12345xy"
 AND accountID > :MID]]></db:sql>
 			<db:input-parameters ><![CDATA[#[{MID:vars.maxID}]]]></db:input-parameters>
 		</db:select>
